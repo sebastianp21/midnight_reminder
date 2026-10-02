@@ -34,7 +34,7 @@ import {
 	shouldCatchUp,
 } from "./midnight-schedule.ts";
 
-const DEFAULT_TIME = "00:00";
+const DEFAULT_TIME = "14:30";
 const DEFAULT_GRACE_MINUTES = 120;
 const DEFAULT_MESSAGE =
 	"🌙 It's past midnight. The bugs will still be here tomorrow — so will you, hopefully well rested. Time to call it a night.";
