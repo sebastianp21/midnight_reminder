@@ -71,21 +71,26 @@ function makeHarness(): Harness {
 	return { handlers, commands, entries, messages, notifications, branch, emit, ctx };
 }
 
-/** A time-of-day a couple of minutes ago, guaranteed to be "today". */
-function recentlyPassedTime(): string {
+/** A time-of-day window that is guaranteed to contain "now". */
+function windowAroundNow(): { from: string; to: string } {
 	const now = new Date();
-	const minutes = Math.max(0, now.getHours() * 60 + now.getMinutes() - 2);
-	const hh = String(Math.floor(minutes / 60)).padStart(2, "0");
-	const mm = String(minutes % 60).padStart(2, "0");
-	return `${hh}:${mm}`;
+	const nowMin = now.getHours() * 60 + now.getMinutes();
+	const fmt = (m: number) => {
+		const v = (((m % 1440) + 1440) % 1440);
+		return `${String(Math.floor(v / 60)).padStart(2, "0")}:${String(v % 60).padStart(2, "0")}`;
+	};
+	return { from: fmt(nowMin - 2), to: fmt(nowMin + 10) };
 }
 
-test("delivers a catch-up reminder when a session starts just after the target", async (t) => {
-	process.env.MIDNIGHT_REMINDER_TIME = recentlyPassedTime();
+test("delivers a catch-up reminder when a session starts inside the window", async (t) => {
+	const { from, to } = windowAroundNow();
+	process.env.MIDNIGHT_REMINDER_FROM = from;
+	process.env.MIDNIGHT_REMINDER_TO = to;
 	process.env.MIDNIGHT_REMINDER_MESSAGE = "go to bed";
 	delete process.env.MIDNIGHT_REMINDER_DISABLED;
 	t.after(() => {
-		delete process.env.MIDNIGHT_REMINDER_TIME;
+		delete process.env.MIDNIGHT_REMINDER_FROM;
+		delete process.env.MIDNIGHT_REMINDER_TO;
 		delete process.env.MIDNIGHT_REMINDER_MESSAGE;
 	});
 
@@ -104,10 +109,13 @@ test("delivers a catch-up reminder when a session starts just after the target",
 });
 
 test("defers delivery until the agent is idle", async (t) => {
-	process.env.MIDNIGHT_REMINDER_TIME = recentlyPassedTime();
+	const { from, to } = windowAroundNow();
+	process.env.MIDNIGHT_REMINDER_FROM = from;
+	process.env.MIDNIGHT_REMINDER_TO = to;
 	process.env.MIDNIGHT_REMINDER_MESSAGE = "sleep";
 	t.after(() => {
-		delete process.env.MIDNIGHT_REMINDER_TIME;
+		delete process.env.MIDNIGHT_REMINDER_FROM;
+		delete process.env.MIDNIGHT_REMINDER_TO;
 		delete process.env.MIDNIGHT_REMINDER_MESSAGE;
 	});
 
@@ -123,10 +131,13 @@ test("defers delivery until the agent is idle", async (t) => {
 });
 
 test("does not deliver twice for the same branch/date", async (t) => {
-	process.env.MIDNIGHT_REMINDER_TIME = recentlyPassedTime();
+	const { from, to } = windowAroundNow();
+	process.env.MIDNIGHT_REMINDER_FROM = from;
+	process.env.MIDNIGHT_REMINDER_TO = to;
 	process.env.MIDNIGHT_REMINDER_MESSAGE = "bed";
 	t.after(() => {
-		delete process.env.MIDNIGHT_REMINDER_TIME;
+		delete process.env.MIDNIGHT_REMINDER_FROM;
+		delete process.env.MIDNIGHT_REMINDER_TO;
 		delete process.env.MIDNIGHT_REMINDER_MESSAGE;
 	});
 
@@ -142,6 +153,8 @@ test("does not deliver twice for the same branch/date", async (t) => {
 });
 
 test("supports /midnight now, status, and off/on", async (t) => {
+	delete process.env.MIDNIGHT_REMINDER_FROM;
+	delete process.env.MIDNIGHT_REMINDER_TO;
 	delete process.env.MIDNIGHT_REMINDER_TIME;
 	process.env.MIDNIGHT_REMINDER_MESSAGE = "rest";
 	t.after(() => {

@@ -66,22 +66,74 @@ export function msSinceTimeOfDay(time: ReminderTime, now: Date): number {
 	return now.getTime() - timeOfDayOn(time, now).getTime();
 }
 
-/**
- * Whether today's reminder was missed while Pi was closed but is still
- * worth delivering: the target time has passed and we are within `graceMs`.
- */
-export function shouldCatchUp(
-	time: ReminderTime,
-	now: Date,
-	graceMs: number,
-): boolean {
-	const elapsed = msSinceTimeOfDay(time, now);
-	return elapsed >= 0 && elapsed <= graceMs;
-}
-
 /** Format a {@link ReminderTime} back to a padded `HH:MM` string. */
 export function formatTimeOfDay(time: ReminderTime): string {
 	const hours = String(time.hours).padStart(2, "0");
 	const minutes = String(time.minutes).padStart(2, "0");
 	return `${hours}:${minutes}`;
+}
+
+/** A local time-of-day range during which the reminder is considered due. */
+export interface ReminderWindow {
+	/** Start of the window (inclusive). The reminder fires here. */
+	from: ReminderTime;
+	/** End of the window (exclusive). After this, catch-up stops. */
+	to: ReminderTime;
+}
+
+/** Minutes since local midnight for a {@link ReminderTime}. */
+function toMinutes(time: ReminderTime): number {
+	return time.hours * 60 + time.minutes;
+}
+
+/** Local minutes since midnight for `date`. */
+export function minuteOfDay(date: Date): number {
+	return date.getHours() * 60 + date.getMinutes();
+}
+
+/**
+ * Shift `time` by `minutes` (which may be negative), wrapping around the
+ * 24-hour clock. Useful for turning a start time plus a duration into an end
+ * time. The result is not rounded to a whole minute boundary, matching the
+ * precision of {@link ReminderTime}.
+ */
+export function addMinutes(time: ReminderTime, minutes: number): ReminderTime {
+	const day = 24 * 60;
+	const total = (((toMinutes(time) + minutes) % day) + day) % day;
+	return { hours: Math.floor(total / 60), minutes: total % 60 };
+}
+
+/**
+ * Parse a window from two `HH:MM` strings. Returns `null` when either end is
+ * invalid (e.g. "24:00" or "noon").
+ */
+export function parseWindow(
+	fromInput: string,
+	toInput: string,
+): ReminderWindow | null {
+	const from = parseTimeOfDay(fromInput);
+	const to = parseTimeOfDay(toInput);
+	if (!from || !to) return null;
+	return { from, to };
+}
+
+/**
+ * Whether `now` falls inside the window. The start is inclusive, the end is
+ * exclusive. Windows may wrap past midnight (for example `22:00` -> `06:00`).
+ * A window whose ends are equal is treated as empty.
+ */
+export function isWithinWindow(window: ReminderWindow, now: Date): boolean {
+	const current = minuteOfDay(now);
+	const from = toMinutes(window.from);
+	const to = toMinutes(window.to);
+
+	if (from === to) return false;
+	if (from < to) return current >= from && current < to;
+	// Wraps past midnight: from -> 24:00 plus 00:00 -> to.
+	return current >= from || current < to;
+}
+
+/** Format a {@link ReminderWindow} as `HH:MM-HH:MM`. */
+export function formatWindow(window: ReminderWindow): string {
+	return `${formatTimeOfDay(window.from)}-${formatTimeOfDay(window.to)}`;
 }

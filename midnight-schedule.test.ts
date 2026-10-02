@@ -8,12 +8,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+	addMinutes,
 	dateKey,
 	formatTimeOfDay,
+	formatWindow,
+	isWithinWindow,
+	minuteOfDay,
 	msSinceTimeOfDay,
 	msUntilNext,
 	parseTimeOfDay,
-	shouldCatchUp,
+	parseWindow,
 	timeOfDayOn,
 } from "./midnight-schedule.ts";
 
@@ -69,16 +73,53 @@ test("msSinceTimeOfDay is negative before the target and positive after", () => 
 	assert.equal(msSinceTimeOfDay({ hours: 0, minutes: 0 }, at(0, 0)), 0);
 });
 
-test("shouldCatchUp only fires inside the grace window", () => {
-	const time = { hours: 0, minutes: 0 };
-	// Before midnight: never.
-	assert.equal(shouldCatchUp(time, at(23, 59), HOUR), false);
-	// 30 minutes late with a 2h window: yes.
-	assert.equal(shouldCatchUp(time, at(0, 30), 2 * HOUR), true);
-	// Exactly at the edge: yes.
-	assert.equal(shouldCatchUp(time, at(2, 0), 2 * HOUR), true);
-	// Just past the edge: no.
-	assert.equal(shouldCatchUp(time, at(2, 1), 2 * HOUR), false);
+test("minuteOfDay is the local minute count", () => {
+	assert.equal(minuteOfDay(at(0, 0)), 0);
+	assert.equal(minuteOfDay(at(1, 30)), 90);
+	assert.equal(minuteOfDay(at(23, 59)), 1439);
+});
+
+test("addMinutes wraps around the 24-hour clock", () => {
+	assert.deepEqual(addMinutes({ hours: 0, minutes: 0 }, 90), { hours: 1, minutes: 30 });
+	assert.deepEqual(addMinutes({ hours: 23, minutes: 30 }, 45), { hours: 0, minutes: 15 });
+	assert.deepEqual(addMinutes({ hours: 1, minutes: 0 }, -90), { hours: 23, minutes: 30 });
+});
+
+test("parseWindow parses two valid times and rejects bad input", () => {
+	assert.deepEqual(parseWindow("00:00", "06:00"), {
+		from: { hours: 0, minutes: 0 },
+		to: { hours: 6, minutes: 0 },
+	});
+	assert.equal(parseWindow("00:00", "25:00"), null);
+	assert.equal(parseWindow("noon", "06:00"), null);
+});
+
+test("isWithinWindow includes the start and excludes the end", () => {
+	const window = { from: { hours: 0, minutes: 0 }, to: { hours: 6, minutes: 0 } };
+	assert.equal(isWithinWindow(window, at(23, 59)), false, "before the window");
+	assert.equal(isWithinWindow(window, at(0, 0)), true, "at the inclusive start");
+	assert.equal(isWithinWindow(window, at(3, 30)), true, "inside the window");
+	assert.equal(isWithinWindow(window, at(6, 0)), false, "at the exclusive end");
+	assert.equal(isWithinWindow(window, at(12, 0)), false, "after the window");
+});
+
+test("isWithinWindow supports windows that wrap past midnight", () => {
+	const window = { from: { hours: 22, minutes: 0 }, to: { hours: 6, minutes: 0 } };
+	assert.equal(isWithinWindow(window, at(23, 0)), true);
+	assert.equal(isWithinWindow(window, at(2, 0)), true);
+	assert.equal(isWithinWindow(window, at(12, 0)), false);
+});
+
+test("an empty window (equal ends) never contains a time", () => {
+	const window = { from: { hours: 3, minutes: 0 }, to: { hours: 3, minutes: 0 } };
+	assert.equal(isWithinWindow(window, at(3, 0)), false);
+});
+
+test("formatWindow renders a readable range", () => {
+	assert.equal(
+		formatWindow({ from: { hours: 0, minutes: 0 }, to: { hours: 6, minutes: 0 } }),
+		"00:00-06:00",
+	);
 });
 
 test("formatTimeOfDay is the inverse of parseTimeOfDay for valid input", () => {
