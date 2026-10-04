@@ -99,6 +99,7 @@ test("isWithinWindow includes the start and excludes the end", () => {
 	assert.equal(isWithinWindow(window, at(23, 59)), false, "before the window");
 	assert.equal(isWithinWindow(window, at(0, 0)), true, "at the inclusive start");
 	assert.equal(isWithinWindow(window, at(3, 30)), true, "inside the window");
+	assert.equal(isWithinWindow(window, at(5, 59)), true, "one minute before the end");
 	assert.equal(isWithinWindow(window, at(6, 0)), false, "at the exclusive end");
 	assert.equal(isWithinWindow(window, at(12, 0)), false, "after the window");
 });

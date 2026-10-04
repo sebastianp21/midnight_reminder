@@ -25,7 +25,7 @@ dependencies, and Node runs the TypeScript sources as-is.
 | `midnight-reminder.ts` | The extension: runtime wiring, timers, messages, command. |
 | `midnight-schedule.ts` | Pure scheduling helpers (no Pi imports). |
 | `midnight-schedule.test.ts` | Unit tests for the scheduling math. |
-| `midnight-reminder.test.ts` | Integration tests against a fake Pi runtime. |
+| `midnight-reminder.test.ts` | Integration tests against a fake Pi runtime, including simulated-time coverage. |
 
 ## Running the extension
 
@@ -126,10 +126,16 @@ node --test midnight-reminder.test.ts   # extension wiring with a fake runtime
 Expected output ends with a summary like:
 
 ```text
-# tests 19
-# pass 19
+# tests 25
+# pass 25
 # fail 0
 ```
+
+The integration suite uses Node's mock timers (`t.mock.timers`) to freeze
+`Date`/`setTimeout`, so it can assert boundary behavior without waiting for
+wall-clock time: `23:59` is quiet while `00:00`, `05:59`, and a mid-window
+session start deliver, `06:00` is quiet, reminders are deduped per local day,
+and `session_shutdown` cancels the pending timer.
 
 ## Trying it without waiting for midnight
 
