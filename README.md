@@ -24,8 +24,10 @@ dependencies, and Node runs the TypeScript sources as-is.
 | --- | --- |
 | `midnight-reminder.ts` | The extension: runtime wiring, timers, messages, command. |
 | `midnight-schedule.ts` | Pure scheduling helpers (no Pi imports). |
+| `bedtime-demo.ts` | Deterministic simulated-time demonstration used by `/bedtime-test`. |
 | `midnight-schedule.test.ts` | Unit tests for the scheduling math. |
 | `midnight-reminder.test.ts` | Integration tests against a fake Pi runtime, including simulated-time coverage. |
+| `bedtime-test.test.ts` | Tests for the `/bedtime-test` command and its simulator. |
 
 ## Running the extension
 
@@ -65,8 +67,21 @@ Once loaded, the extension registers a single `/midnight` command:
 | `/midnight status` | Print the current state and the next scheduled time. |
 | `/midnight off` | Disable the schedule for this session. |
 | `/midnight on` | Re-arm the schedule. |
+| `/bedtime-test` | Run the reminder through simulated time and report pass/fail. |
 
 Running `/midnight` with no argument is the same as `/midnight now`.
+
+### Demonstrating with `/bedtime-test`
+
+`/bedtime-test` runs a frozen-clock simulation of the reminder, so it never
+waits for real midnight. It walks the timeline 23:59 -> 00:00 -> 00:30 ->
+05:59 -> 06:00 -> next-day 00:00 and reports:
+
+- no reminder before the window opens,
+- a reminder at the inclusive 00:00 start,
+- **no duplicate reminder for the same local date**, even after several checks,
+- a fresh reminder on the next local date,
+- an overall `PASS`/`FAIL` summary.
 
 ## Configuration
 
@@ -121,13 +136,14 @@ Run one suite at a time:
 ```sh
 node --test midnight-schedule.test.ts   # pure scheduling math
 node --test midnight-reminder.test.ts   # extension wiring with a fake runtime
+node --test bedtime-test.test.ts        # /bedtime-test simulator + command
 ```
 
 Expected output ends with a summary like:
 
 ```text
-# tests 25
-# pass 25
+# tests 32
+# pass 32
 # fail 0
 ```
 

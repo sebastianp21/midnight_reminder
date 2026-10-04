@@ -38,6 +38,7 @@ import {
 	msUntilNext,
 	parseTimeOfDay,
 } from "./midnight-schedule.ts";
+import { formatBedtimeReport, runBedtimeTest } from "./bedtime-demo.ts";
 
 const DEFAULT_FROM = "00:00";
 const DEFAULT_TO = "06:00";
@@ -211,6 +212,33 @@ export default function (pi: ExtensionAPI) {
 		clearTimer();
 		ctx = undefined;
 		pendingReason = null;
+	});
+
+	pi.registerCommand("bedtime-test", {
+		description:
+			"Run the reminder through simulated time and report pass/fail (no waiting for midnight)",
+		handler: async (_args, commandCtx) => {
+			// Always use the canonical 00:00-06:00 window so the demonstration is
+			// deterministic regardless of the environment configuration.
+			const result = runBedtimeTest({
+				from: { hours: 0, minutes: 0 },
+				to: { hours: 6, minutes: 0 },
+			});
+			const report = formatBedtimeReport(result);
+
+			pi.sendMessage({
+				customType: CUSTOM_TYPE,
+				content: report,
+				display: true,
+				details: { kind: "bedtime-test", passed: result.passed },
+			});
+			commandCtx.ui.notify(
+				result.passed
+					? "bedtime-test: all simulated-time checks passed ✅"
+					: "bedtime-test: some checks failed ❌",
+				result.passed ? "info" : "warning",
+			);
+		},
 	});
 
 	pi.registerCommand("midnight", {
