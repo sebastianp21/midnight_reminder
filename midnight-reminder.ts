@@ -224,7 +224,7 @@ export default function (pi: ExtensionAPI) {
 				from: { hours: 0, minutes: 0 },
 				to: { hours: 6, minutes: 0 },
 			});
-			const report = formatBedtimeReport(result);
+			const report = formatBedtimeReport(result, { message });
 
 			pi.sendMessage({
 				customType: CUSTOM_TYPE,

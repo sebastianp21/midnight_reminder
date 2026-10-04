@@ -12,6 +12,7 @@
 import {
 	type ReminderWindow,
 	dateKey,
+	formatWindow,
 	isWithinWindow,
 } from "./midnight-schedule.ts";
 
@@ -183,16 +184,39 @@ export function runBedtimeTest(
 	};
 }
 
+/** Optional context shown in the formatted report. */
+export interface BedtimeReportOptions {
+	/** Reminder text to preview, exactly as it would be delivered. */
+	message?: string;
+}
+
 /** Render a human-readable report for the `/bedtime-test` command. */
-export function formatBedtimeReport(result: BedtimeTestResult): string {
+export function formatBedtimeReport(
+	result: BedtimeTestResult,
+	options: BedtimeReportOptions = {},
+): string {
 	const lines = [
 		`Midnight Reminder — simulated-time bedtime test: ${result.passed ? "PASS ✅" : "FAIL ❌"}`,
+		"",
+		`Window: ${formatWindow(result.window)} local — only reminds you during these hours`,
+		"  (the start time counts; the end time doesn't; and only once per local date).",
+	];
+
+	if (options.message) {
+		lines.push(
+			"",
+			"This is what the reminder looks like when it triggers:",
+			`  ${options.message}`,
+		);
+	}
+
+	lines.push(
 		"",
 		...result.checks.map(
 			(check) => `${check.passed ? "✅" : "❌"} ${check.name} — ${check.detail}`,
 		),
 		"",
 		`${result.deliveries} reminder(s) across ${result.uniqueDays} distinct local date(s).`,
-	];
+	);
 	return lines.join("\n");
 }

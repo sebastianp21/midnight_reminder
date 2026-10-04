@@ -83,6 +83,22 @@ waits for real midnight. It walks the timeline 23:59 -> 00:00 -> 00:30 ->
 - a fresh reminder on the next local date,
 - an overall `PASS`/`FAIL` summary.
 
+The report also shows the active window and when it triggers, plus a preview
+of the exact reminder text that would be delivered, so you can confirm at a
+glance what you (or your users) will see:
+
+```text
+Midnight Reminder — simulated-time bedtime test: PASS ✅
+
+Window: 00:00-06:00 local — only reminds you during these hours
+  (the start time counts; the end time doesn't; and only once per local date).
+
+This is what the reminder looks like when it triggers:
+  🌙 It's past midnight. ... Time to call it a night.
+
+...
+```
+
 ## Configuration
 
 All configuration is via environment variables, read when the extension is

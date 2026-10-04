@@ -92,6 +92,21 @@ test("formatBedtimeReport summarizes the run", () => {
 	assert.match(report, /2 reminder\(s\) across 2 distinct local date\(s\)/);
 });
 
+test("formatBedtimeReport explains when the reminder triggers", () => {
+	const report = formatBedtimeReport(runBedtimeTest(WINDOW));
+	assert.match(report, /Window: 00:00-06:00 local/);
+	assert.match(report, /during these hours/);
+	assert.match(report, /the start time counts; the end time doesn't/);
+});
+
+test("formatBedtimeReport previews the delivered reminder message", () => {
+	const report = formatBedtimeReport(runBedtimeTest(WINDOW), {
+		message: "🌙 Time to sleep, friend.",
+	});
+	assert.match(report, /what the reminder looks like when it triggers/i);
+	assert.match(report, /🌙 Time to sleep, friend\./);
+});
+
 interface Harness {
 	commands: Record<string, { handler: (args: string, ctx: unknown) => Promise<void> }>;
 	messages: Array<Record<string, unknown>>;
@@ -150,6 +165,16 @@ test("the extension exposes /bedtime-test and it reports a pass", async (t) => {
 	assert.equal(h.messages.length, 1);
 	assert.equal(h.messages[0].display, true);
 	assert.match(String(h.messages[0].content), /PASS/);
+	assert.match(
+		String(h.messages[0].content),
+		/what the reminder looks like when it triggers/i,
+		"includes a reminder preview",
+	);
+	assert.match(
+		String(h.messages[0].content),
+		/Window: 00:00-06:00 local/,
+		"explains the triggering window",
+	);
 	assert.ok(
 		h.notifications.some((n) => n.message.includes("passed")),
 		"notifies a passing summary",
